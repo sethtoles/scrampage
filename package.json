@@ -1,0 +1,25 @@
+{
+  "name": "scrampage",
+  "version": "1.0.0",
+  "description": "no",
+  "main": "index.html",
+  "scripts": {
+    "server-dev": "./node_modules/http-server/bin/http-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sethtoles/scrampage.git"
+  },
+  "author": "Seth Toles <sethtoles>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sethtoles/scrampage/issues"
+  },
+  "homepage": "https://github.com/sethtoles/scrampage#readme",
+  "dependencies": {
+    "paper": "^0.11.5"
+  },
+  "devDependencies": {
+    "http-server": "^0.11.1"
+  }
+}
