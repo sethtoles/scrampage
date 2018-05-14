@@ -19,45 +19,60 @@ const {
 const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
 
+const SPEED_LIMIT = 10;
+const FONT_SIZE = 100;
+
 // Canvas Setup
 Object.assign(canvas, { width, height });
-context.font = '100px Courier, monospace';
-context.textAlign = 'top left';
+context.font = `${FONT_SIZE}px Courier, monospace`;
+context.textAlign = 'left';
+context.textBaseline = 'top';
 
 // State Setup
-let position = [width / 2, height / 2];
-let vector = [1, 1];
 let word = 'SCRAMPAGE';
+let position = [0, 0];
+let vector = [0, 0];
+let iterations = 0;
+
+const textHeight = FONT_SIZE;
+const textWidth = context.measureText(word).width;
 
 const draw = () => {
-    // Maybe Fade
-    if (Math.random() < 0.1) {
+    // Fade
+    if (iterations % 10 === 0) {
         fade(context);
     }
 
-    if (Math.random() < 0.001) {
+    if (Math.random() < 0.00005) {
         word = scramble(word);
+    }
+
+    // Change
+    const [ x, y ] = position;
+    const [ dx, dy ] = vector;
+    position = [
+        Math.max(0, Math.min(x + dx, width - textWidth)),
+        Math.max(0, Math.min(y + dy, height - textHeight)),
+    ];
+    vector = [
+        Math.max(-SPEED_LIMIT, Math.min(dx + randAdjust(), SPEED_LIMIT)),
+        Math.max(-SPEED_LIMIT, Math.min(dy + randAdjust(), SPEED_LIMIT)),
+    ];
+
+    if (position[0] + textWidth >= width || position[0] <= 0) {
+        vector[0] *= -1;
+    }
+
+    if (position[1] + textHeight >= height || position[1] <= 0) {
+        vector[1] *= -1;
     }
 
     // Render
     context.fillStyle = rgba(randChannel(), randChannel(), randChannel());
     context.fillText(word, ...position);
 
-    // Change
-    const [ x, y ] = position;
-    const [ dx, dy ] = vector;
-    position = [ x + dx, y + dy ];
-    vector = [ dx + randAdjust(), dy + randAdjust() ];
-
-    if (position[0] > width || position[0] < 0) {
-        vector[0] *= -1;
-    }
-
-    if (position[1] > height || position[1] < 0) {
-        vector[1] *= -1;
-    }
-
     // Repeat
+    iterations++;
     requestAnimationFrame(draw);
 }
 
