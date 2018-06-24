@@ -1,11 +1,11 @@
 // Util
-const rgba = (r, g, b, a = 1) => `rgba(${r}, ${g}, ${b}, ${a})`;
-const randChannel = () => Math.floor(Math.random() * 256);
-const randAdjust = () => Math.round(Math.random() * 2) - 1;
+const rgba = (r, g, b, a = 1) => `rgba(${r}, ${g}, ${b}, ${a})`; // rgba string
+const randChannel = () => Math.floor(Math.random() * 256); // random int 0 to 255 (inc.)
+const randAdjust = () => Math.round(Math.random() * 2) - 1; // random int -1, 0, or 1
 const fade = (ctx, amount = 0.1) => {
     ctx.fillStyle = rgba(0, 0, 0, amount);
     ctx.fillRect(0, 0, width, height);
-};
+}; // apply translucent black rect over canvas
 const scramble = string => {
     const letters = [ ...string ];
     return letters.sort(() => Math.random() < 0.5 ? 1 : -1).join('');
@@ -19,7 +19,9 @@ const {
 const canvas = document.getElementById('canvas');
 const context = canvas.getContext('2d');
 
-const SPEED_LIMIT = 10;
+const keyExp = /^[\w\s]$/; // valid characters to be used in the word
+
+const SPEED_LIMIT = 10; // the maximum pixel distance the word can move in one frame
 const FONT_SIZE = 100;
 
 // Canvas Setup
@@ -28,6 +30,33 @@ context.font = `${FONT_SIZE}px Courier, monospace`;
 context.textAlign = 'left';
 context.textBaseline = 'top';
 
+let editing = false;
+let editingTimeout;
+document.addEventListener('keyup', e => {
+    const { key } = e;
+
+    if (!key || !key.match(keyExp)) {
+        return;
+    }
+
+    e.preventDefault();
+
+    // editing not in progress, clear word and enter editing mode
+    if (!editing) {
+        editing = true;
+        word = '';
+    }
+
+    word += key;
+    textWidth = context.measureText(word).width;
+
+    // clear and restart editing timeout
+    clearTimeout(editingTimeout);
+    editingTimeout = setTimeout(() => {
+        editing = false;
+    }, 2000);
+});
+
 // State Setup
 let word = 'SCRAMPAGE';
 let position = [0, 0];
@@ -35,7 +64,7 @@ let vector = [0, 0];
 let iterations = 0;
 
 const textHeight = FONT_SIZE;
-const textWidth = context.measureText(word).width;
+let textWidth = context.measureText(word).width;
 
 const draw = () => {
     // Fade
