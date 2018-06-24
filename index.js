@@ -10,6 +10,11 @@ const scramble = string => {
     const letters = [ ...string ];
     return letters.sort(() => Math.random() < 0.5 ? 1 : -1).join('');
 };
+const setWord = string => {
+    word = string;
+    scrambledWord = scramble(word);
+    textWidth = context.measureText(word).width;
+}
 
 // Global Setup
 const {
@@ -47,8 +52,7 @@ document.addEventListener('keyup', e => {
         word = '';
     }
 
-    word += key;
-    textWidth = context.measureText(word).width;
+    setWord(word + key);
 
     // clear and restart editing timeout
     clearTimeout(editingTimeout);
@@ -58,13 +62,16 @@ document.addEventListener('keyup', e => {
 });
 
 // State Setup
-let word = 'SCRAMPAGE';
+let word;
+let scrambledWord;
+let shouldUseScrambled = false;
 let position = [0, 0];
 let vector = [0, 0];
 let iterations = 0;
 
 const textHeight = FONT_SIZE;
-let textWidth = context.measureText(word).width;
+
+setWord('SCRAMPAGE');
 
 const draw = () => {
     // Fade
@@ -72,8 +79,11 @@ const draw = () => {
         fade(context);
     }
 
-    if (Math.random() < 0.00005) {
-        word = scramble(word);
+    if (Math.random() < 0.005) {
+        shouldUseScrambled = !shouldUseScrambled;
+        if (!shouldUseScrambled) {
+            scrambledWord = scramble(word);
+        }
     }
 
     // Change
@@ -98,7 +108,7 @@ const draw = () => {
 
     // Render
     context.fillStyle = rgba(randChannel(), randChannel(), randChannel());
-    context.fillText(word, ...position);
+    context.fillText(shouldUseScrambled ? scrambledWord : word, ...position);
 
     // Repeat
     iterations++;
