@@ -1,22 +1,29 @@
 // Util
-const rgba = (r, g, b, a = 1) => `rgba(${r}, ${g}, ${b}, ${a})`; // rgba string
-const randChannel = () => Math.floor(Math.random() * 256); // random int 0 to 255 (inc.)
+const hsla = (h, s, l, a = 1) => `hsla(${h}, ${s}%, ${l}%, ${a})`; // hsla string
+const randHue = () => Math.floor(Math.random() * 360); // random int 0 to 360
+const randPercent = () => Math.floor(Math.random() * 100); // random int 0 to 100
 const randAdjust = () => Math.round(Math.random() * 2) - 1; // random int -1, 0, or 1
 const fade = (ctx, amount = 0.1) => {
-    ctx.fillStyle = rgba(0, 0, 0, amount);
+    ctx.fillStyle = hsla(0, 0, 0, amount);
     ctx.fillRect(0, 0, width, height);
 }; // apply translucent black rect over canvas
 const scramble = string => {
     const letters = [ ...string ];
     return letters.sort(() => Math.random() < 0.5 ? 1 : -1).join('');
-};
+}; // rearrange letters in word
 const setWord = string => {
     word = string;
     scrambledWord = scramble(word);
     textWidth = context.measureText(word).width;
     maxXPosition = width - textWidth;
     maxYPosition = height - textHeight;
-}
+}; // Update global vars based on new word
+const centerWord = () => {
+    position = [
+        (width / 2) - (textWidth / 2),
+        (height / 2) - (textHeight / 2),
+    ];
+}; // Set the global position so that the word is centered
 
 // Global Setup
 const {
@@ -86,14 +93,13 @@ let vector = [0, 0];
 let iterations = 0;
 let maxXPosition;
 let maxYPosition;
+let color = hsla(randHue(), randPercent(), randPercent());
 
 const textHeight = FONT_SIZE;
 
 const draw = () => {
-    // Fade
-    if (iterations % 10 === 0) {
-        fade(context);
-    }
+    // Fade existing content
+    fade(context, 0.03 );
 
     // Scramble/restore word
     if (Math.random() < 0.005) {
@@ -144,7 +150,7 @@ const draw = () => {
     }
 
     // Render
-    context.fillStyle = rgba(randChannel(), randChannel(), randChannel());
+    context.fillStyle = color;
     context.fillText(shouldUseScrambled ? scrambledWord : word, ...position);
 
     // Repeat
@@ -156,4 +162,5 @@ document.addEventListener('click', () => fade(context, 1));
 
 // Start
 setWord('SCRAMPAGE');
+centerWord();
 draw();
