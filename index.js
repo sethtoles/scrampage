@@ -14,6 +14,8 @@ const setWord = string => {
     word = string;
     scrambledWord = scramble(word);
     textWidth = context.measureText(word).width;
+    maxXPosition = width - textWidth;
+    maxYPosition = height - textHeight;
 }
 
 // Global Setup
@@ -61,6 +63,20 @@ document.addEventListener('keyup', e => {
     }, 2000);
 });
 
+let target = null;
+let targetingTimeout;
+document.addEventListener('mousemove', ({ clientX, clientY }) => {
+    target = {
+        x: clientX,
+        y: clientY,
+    };
+
+    clearTimeout(targetingTimeout);
+    targetingTimeout = setTimeout(() => {
+        target = null;
+    }, 500);
+});
+
 // State Setup
 let word;
 let scrambledWord;
@@ -68,10 +84,10 @@ let shouldUseScrambled = false;
 let position = [0, 0];
 let vector = [0, 0];
 let iterations = 0;
+let maxXPosition;
+let maxYPosition;
 
 const textHeight = FONT_SIZE;
-
-setWord('SCRAMPAGE');
 
 const draw = () => {
     // Fade
@@ -79,6 +95,7 @@ const draw = () => {
         fade(context);
     }
 
+    // Scramble/restore word
     if (Math.random() < 0.005) {
         shouldUseScrambled = !shouldUseScrambled;
         if (!shouldUseScrambled) {
@@ -86,22 +103,42 @@ const draw = () => {
         }
     }
 
-    // Change
+    // Get current position and direction
     const [ x, y ] = position;
-    const [ dx, dy ] = vector;
+    let [ dx, dy ] = vector;
+
+    if (target) {
+        // Get midpoint of text
+        const midX = x + (textWidth / 2);
+        const midY = y + (textHeight / 2);
+        // Get distances from midpoint to target
+        const diffX = target.x - midX;
+        const diffY = target.y - midY;
+        // Add percent of target vector to movement
+        dx += diffX * 0.01;
+        dy += diffY * 0.01;
+    }
+
+    // Calculate new position
+    const newX = x + dx;
+    const newY = y + dy;
+
+    // Set new position within bounds
     position = [
-        Math.max(0, Math.min(x + dx, width - textWidth)),
-        Math.max(0, Math.min(y + dy, height - textHeight)),
+        Math.max(0, Math.min(newX, maxXPosition)),
+        Math.max(0, Math.min(newY, maxYPosition)),
     ];
+
+    // Adjust direction randomly within [-SPEED_LIMIT, SPEED_LIMIT]
     vector = [
         Math.max(-SPEED_LIMIT, Math.min(dx + randAdjust(), SPEED_LIMIT)),
         Math.max(-SPEED_LIMIT, Math.min(dy + randAdjust(), SPEED_LIMIT)),
     ];
 
+    // Flip x or y direction if text has hit an edge
     if (position[0] + textWidth >= width || position[0] <= 0) {
         vector[0] *= -1;
     }
-
     if (position[1] + textHeight >= height || position[1] <= 0) {
         vector[1] *= -1;
     }
@@ -117,4 +154,6 @@ const draw = () => {
 
 document.addEventListener('click', () => fade(context, 1));
 
+// Start
+setWord('SCRAMPAGE');
 draw();
