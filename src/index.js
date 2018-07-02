@@ -1,3 +1,5 @@
+import queryString from 'query-string';
+
 // CONFIGURATION
 const SPEED_LIMIT = 10; // The maximum pixel distance the word can move in one frame
 const FONT_SIZE = 100;
@@ -238,8 +240,13 @@ document.addEventListener('keyup', editText);
 document.addEventListener('mousemove', setTarget);
 
 
+// WORD CHECK
+const { message } = queryString.parse(location.search);
+const parsedMessage = (message || '').replace(/[^\w\s]/, '');
+
+
 // START
 setBounds();
-setWord('SCRAMPAGE');
+setWord(parsedMessage || 'SCRAMPAGE');
 centerWord();
 draw();

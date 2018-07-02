@@ -17,7 +17,9 @@
     "url": "https://github.com/sethtoles/scrampage/issues"
   },
   "homepage": "https://github.com/sethtoles/scrampage#readme",
-  "dependencies": {},
+  "dependencies": {
+    "query-string": "^6.1.0"
+  },
   "devDependencies": {
     "babel-core": "^6.26.3",
     "babel-loader": "^7.1.4",
