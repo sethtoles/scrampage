@@ -4,7 +4,7 @@ const FONT_SIZE = 100;
 const KEY_EXP = /^[\w\s]$/; // Valid characters to be used in the word
 const EDITING_TIME = 2000; // How long after each character typed before leaving editing mode
 const MOUSE_FOLLOW_TIME = 500; // How long the text will follow the mouse after it stops moving
-const HISTORY_LENGTH = 100;
+const TAIL_LIMITS = [ 1, 500 ]; // The normal bounds of a tail length
 
 
 // UTIL
@@ -13,6 +13,7 @@ const randHue = () => Math.floor(Math.random() * 360); // Random int 0 to 360
 const randPercent = () => Math.floor(Math.random() * 100); // Random int 0 to 100
 const randAdjust = () => Math.round(Math.random() * 2) - 1; // Random int -1, 0, or 1
 const scramble = string => [ ...string ].sort(() => Math.random() < 0.5 ? 1 : -1).join(''); // Rearrange letters in word
+const randTail = () => Math.round(Math.random() * (TAIL_LIMITS[1] - TAIL_LIMITS[0])) + TAIL_LIMITS[0]; // Random tail length
 
 
 // STATE SETUP
@@ -28,8 +29,10 @@ let colorVector = [ 0, 0, 0 ];
 let textWidth;
 let textHeight;
 let iterations = 0;
-
+let historyLength = randTail();
+let targetHistoryLength = historyLength;
 const changeHistory = [];
+
 
 // CANVAS SETUP
 const canvas = document.getElementById('canvas');
@@ -123,6 +126,10 @@ const draw = () => {
             }
         }
 
+        if (Math.random() < 0.003) {
+            targetHistoryLength = randTail();
+        }
+
         // Get current position and direction
         const [ x, y ] = position;
         let [ dx, dy ] = vector;
@@ -191,16 +198,31 @@ const draw = () => {
         color: [...color],
         position: [...position],
         word: shouldUseScrambled ? scrambledWord : word,
+        historyLength,
     });
 
-    if (changeHistory.length > HISTORY_LENGTH) {
+    // Adjust history length towards target
+    if (historyLength < targetHistoryLength) {
+        historyLength++;
+    }
+    else if (historyLength > targetHistoryLength) {
+        historyLength--;
+    }
+
+    // History is longer than it should be, remove the first entry
+    if (changeHistory.length > historyLength) {
         changeHistory.shift();
+
+        // Do double shift in case history length has gotten smaller
+        if (changeHistory.length > historyLength) {
+            changeHistory.shift();
+        }
     }
 
     // Render all states
     changeHistory.forEach((state, index) => {
         const [ h, s, l ] = state.color;
-        context.fillStyle = hsl(h, s, l * index / HISTORY_LENGTH);
+        context.fillStyle = hsl(h, s, l * index / state.historyLength);
         context.fillText(state.word, ...state.position);
     })
 
