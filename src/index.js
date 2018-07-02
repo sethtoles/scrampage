@@ -4,10 +4,11 @@ const FONT_SIZE = 100;
 const KEY_EXP = /^[\w\s]$/; // Valid characters to be used in the word
 const EDITING_TIME = 2000; // How long after each character typed before leaving editing mode
 const MOUSE_FOLLOW_TIME = 500; // How long the text will follow the mouse after it stops moving
+const HISTORY_LENGTH = 100;
 
 
 // UTIL
-const hsla = (h, s, l, a = 1) => `hsla(${h}, ${s}%, ${l}%, ${a})`; // hsla string
+const hsl = (h, s, l) => `hsl(${h}, ${s}%, ${l}%)`; // hsl string
 const randHue = () => Math.floor(Math.random() * 360); // Random int 0 to 360
 const randPercent = () => Math.floor(Math.random() * 100); // Random int 0 to 100
 const randAdjust = () => Math.round(Math.random() * 2) - 1; // Random int -1, 0, or 1
@@ -22,10 +23,13 @@ let scrambledWord;
 let shouldUseScrambled = false;
 let position = [0, 0];
 let vector = [0, 0];
-let color = hsla(randHue(), randPercent(), randPercent());
+let color = [ randHue(), 50, 50 ];
+let colorVector = [ 0, 0, 0 ];
 let textWidth;
 let textHeight;
+let iterations = 0;
 
+const changeHistory = [];
 
 // CANVAS SETUP
 const canvas = document.getElementById('canvas');
@@ -106,63 +110,102 @@ const setTarget = ({ clientX, clientY }) => {
 
 // FRAME RENDERER
 const draw = () => {
-    // Fade existing content
-    context.fillStyle = hsla(0, 0, 0, 0.03);
+    // Clear existing content
+    context.fillStyle = '#000';
     context.fillRect(0, 0, width, height);
 
-    // Scramble/restore word
-    if (Math.random() < 0.005) {
-        shouldUseScrambled = !shouldUseScrambled;
-        if (!shouldUseScrambled) {
-            scrambledWord = scramble(word);
+    if (iterations > 300) {
+        // Scramble/restore word
+        if (Math.random() < 0.003) {
+            shouldUseScrambled = !shouldUseScrambled;
+            if (!shouldUseScrambled) {
+                scrambledWord = scramble(word);
+            }
+        }
+
+        // Get current position and direction
+        const [ x, y ] = position;
+        let [ dx, dy ] = vector;
+
+        if (target) {
+            // Get midpoint of text
+            const midX = x + (textWidth / 2);
+            const midY = y + (textHeight / 2);
+            // Get distances from midpoint to target
+            const diffX = target.x - midX;
+            const diffY = target.y - midY;
+            // Add percent of target vector to movement
+            dx += diffX * 0.01;
+            dy += diffY * 0.01;
+        }
+
+        // Set new position within bounds
+        const newX = x + dx;
+        const newY = y + dy;
+        const maxXPosition = width - textWidth;
+        const maxYPosition = height - textHeight;
+        position = [
+            Math.max(0, Math.min(newX, maxXPosition)),
+            Math.max(0, Math.min(newY, maxYPosition)),
+        ];
+
+        // Adjust direction randomly within [-SPEED_LIMIT, SPEED_LIMIT]
+        vector = [
+            Math.max(-SPEED_LIMIT, Math.min(dx + randAdjust(), SPEED_LIMIT)),
+            Math.max(-SPEED_LIMIT, Math.min(dy + randAdjust(), SPEED_LIMIT)),
+        ];
+
+        // Flip x or y direction if text has hit an edge
+        if (position[0] + textWidth >= width || position[0] <= 0) {
+            vector[0] *= -1;
+        }
+        if (position[1] + textHeight >= height || position[1] <= 0) {
+            vector[1] *= -1;
         }
     }
 
-    // Get current position and direction
-    const [ x, y ] = position;
-    let [ dx, dy ] = vector;
+    // Get current color values
+    const [ hue, saturation, lightness ] = color;
+    const [ dHue, dSaturation, dLightness ] = colorVector;
 
-    if (target) {
-        // Get midpoint of text
-        const midX = x + (textWidth / 2);
-        const midY = y + (textHeight / 2);
-        // Get distances from midpoint to target
-        const diffX = target.x - midX;
-        const diffY = target.y - midY;
-        // Add percent of target vector to movement
-        dx += diffX * 0.01;
-        dy += diffY * 0.01;
-    }
-
-    // Set new position within bounds
-    const newX = x + dx;
-    const newY = y + dy;
-    const maxXPosition = width - textWidth;
-    const maxYPosition = height - textHeight;
-    position = [
-        Math.max(0, Math.min(newX, maxXPosition)),
-        Math.max(0, Math.min(newY, maxYPosition)),
+    // Update color
+    color = [
+        (hue + dHue) % 360,
+        100,
+        Math.max(25, Math.min(lightness + dLightness, 65)),
     ];
 
-    // Adjust direction randomly within [-SPEED_LIMIT, SPEED_LIMIT]
-    vector = [
-        Math.max(-SPEED_LIMIT, Math.min(dx + randAdjust(), SPEED_LIMIT)),
-        Math.max(-SPEED_LIMIT, Math.min(dy + randAdjust(), SPEED_LIMIT)),
+    // Update color vector
+    colorVector = [
+        0.1,
+        0,
+        Math.max(-5, Math.min(dLightness + randAdjust(), 5)),
     ];
 
-    // Flip x or y direction if text has hit an edge
-    if (position[0] + textWidth >= width || position[0] <= 0) {
-        vector[0] *= -1;
-    }
-    if (position[1] + textHeight >= height || position[1] <= 0) {
-        vector[1] *= -1;
+    if (color[2] <= 25 || color[2] >= 65) {
+        colorVector[2] *= -1;
     }
 
-    // Render
-    context.fillStyle = color;
-    context.fillText(shouldUseScrambled ? scrambledWord : word, ...position);
+    // Push render state to history
+    changeHistory.push({
+        color: [...color],
+        position: [...position],
+        word: shouldUseScrambled ? scrambledWord : word,
+    });
+
+    if (changeHistory.length > HISTORY_LENGTH) {
+        changeHistory.shift();
+    }
+
+    // Render all states
+    changeHistory.forEach((state, index) => {
+        const [ h, s, l ] = state.color;
+        context.fillStyle = hsl(h, s, l * index / HISTORY_LENGTH);
+        context.fillText(state.word, ...state.position);
+    })
 
     // Repeat
+    iterations++;
     requestAnimationFrame(draw);
 };
 

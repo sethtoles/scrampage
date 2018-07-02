@@ -6,7 +6,7 @@ module.exports = (env) => ({
     contentBase: 'dist',
   },
   devtool: env === 'development' ? 'inline-source-map' : 'none',
-  entry: './index.js',
+  entry: './src/index.js',
   module: {
     rules: [
       {
@@ -27,7 +27,7 @@ module.exports = (env) => ({
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: 'index.html',
+      template: './src/index.html',
     }),
   ],
   watchOptions: {
