@@ -6,7 +6,8 @@ const FONT_SIZE = 100;
 const KEY_EXP = /^[\w\s]$/; // Valid characters to be used in the word
 const EDITING_TIME = 2000; // How long after each character typed before leaving editing mode
 const MOUSE_FOLLOW_TIME = 500; // How long the text will follow the mouse after it stops moving
-const TAIL_LIMITS = [ 1, 500 ]; // The normal bounds of a tail length
+const TAIL_LIMITS = [ 1, 1000 ]; // The normal bounds of a tail length
+const INTRO_LENGTH = 200; // How many iterations before the word starts moving
 
 
 // UTIL
@@ -33,6 +34,7 @@ let textHeight;
 let iterations = 0;
 let historyLength = randTail();
 let targetHistoryLength = historyLength;
+let shouldWander = true;
 const changeHistory = [];
 
 
@@ -119,7 +121,7 @@ const draw = () => {
     context.fillStyle = '#000';
     context.fillRect(0, 0, width, height);
 
-    if (iterations > 300) {
+    if (iterations > INTRO_LENGTH) {
         // Scramble/restore word
         if (Math.random() < 0.003) {
             shouldUseScrambled = !shouldUseScrambled;
@@ -128,8 +130,17 @@ const draw = () => {
             }
         }
 
+        // Adjust tail length
         if (Math.random() < 0.003) {
             targetHistoryLength = randTail();
+        }
+
+        // Toggle wandering - more likely to wander than to stop
+        if (Math.random() < 0.005) {
+            shouldWander = true;
+            if (Math.random() < 0.25) {
+                shouldWander = false;
+            }
         }
 
         // Get current position and direction
@@ -158,10 +169,14 @@ const draw = () => {
             Math.max(0, Math.min(newY, maxYPosition)),
         ];
 
-        // Adjust direction randomly within [-SPEED_LIMIT, SPEED_LIMIT]
+        // Determine adjustment amount: random or accelerating
+        const adjustX = shouldWander ? randAdjust() : (dx * 1.003) - dx;
+        const adjustY = shouldWander ? randAdjust() : (dy * 1.003) - dy;
+
+        // Adjust direction within [-SPEED_LIMIT, SPEED_LIMIT]
         vector = [
-            Math.max(-SPEED_LIMIT, Math.min(dx + randAdjust(), SPEED_LIMIT)),
-            Math.max(-SPEED_LIMIT, Math.min(dy + randAdjust(), SPEED_LIMIT)),
+            Math.max(-SPEED_LIMIT, Math.min(dx + adjustX, SPEED_LIMIT)),
+            Math.max(-SPEED_LIMIT, Math.min(dy + adjustY, SPEED_LIMIT)),
         ];
 
         // Flip x or y direction if text has hit an edge
