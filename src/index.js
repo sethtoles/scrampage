@@ -6,6 +6,7 @@ const FONT_SIZE = 100;
 const KEY_EXP = /^[\w\s]$/; // Valid characters to be used in the word
 const EDITING_TIME = 2000; // How long after each character typed before leaving editing mode
 const MOUSE_FOLLOW_TIME = 500; // How long the text will follow the mouse after it stops moving
+const MOTION_FOLLOW_TIME = 3000; // How long the text will follow the device orientation
 const TAIL_LIMITS = [ 1, 1000 ]; // The normal bounds of a tail length
 const INTRO_LENGTH = 200; // How many iterations before the word starts moving
 
@@ -38,8 +39,9 @@ let shouldWander = true;
 const changeHistory = [];
 
 
-// CANVAS SETUP
+// ELEMENT SETUP
 const canvas = document.getElementById('canvas');
+const consoleEl = document.getElementById('console'); // place to emit dubug statements
 const context = canvas.getContext('2d');
 
 
@@ -115,6 +117,45 @@ const setTarget = ({ clientX, clientY }) => {
 };
 
 
+// MOTION TRACKING
+const deviceAcceleration = { x: 0, y: 0 };
+let motionTimeout;
+const handleMotion = e => {
+    const {
+        accelerationIncludingGravity: acceleration = {},
+        rotationRate = {},
+    } = e;
+    const { alpha, beta } = rotationRate;
+
+    // Device has moved significantly, start tracking motion
+    if (Math.abs(alpha) > 50 || Math.abs(beta) > 50) {
+        clearTimeout(motionTimeout);
+        motionTimeout = setTimeout(() => {
+            motionTimeout = 0;
+        }, MOTION_FOLLOW_TIME);
+    }
+
+    if (motionTimeout) {
+        if (orientation === 90) {
+            deviceAcceleration.x = Math.max(-1, Math.min(1, acceleration.y / -9.8));
+            deviceAcceleration.y = Math.max(-1, Math.min(1, acceleration.x / -9.8));
+        }
+        else if (orientation === -90) {
+            deviceAcceleration.x = Math.max(-1, Math.min(1, acceleration.y / 9.8));
+            deviceAcceleration.y = Math.max(-1, Math.min(1, acceleration.x / 9.8));
+        }
+        else {
+            deviceAcceleration.x = Math.max(-1, Math.min(1, acceleration.x / 9.8));
+            deviceAcceleration.y = Math.max(-1, Math.min(1, acceleration.y / -9.8));
+        }
+    }
+    else {
+        deviceAcceleration.x = 0;
+        deviceAcceleration.y = 0;
+    }
+}
+
+
 // FRAME RENDERER
 const draw = () => {
     // Clear existing content
@@ -170,8 +211,8 @@ const draw = () => {
         ];
 
         // Determine adjustment amount: random or accelerating
-        const adjustX = shouldWander ? randAdjust() : (dx * 1.003) - dx;
-        const adjustY = shouldWander ? randAdjust() : (dy * 1.003) - dy;
+        const adjustX = (shouldWander ? randAdjust() : (dx * 1.003) - dx) + deviceAcceleration.x * 3;
+        const adjustY = (shouldWander ? randAdjust() : (dy * 1.003) - dy) + deviceAcceleration.y * 3;
 
         // Adjust direction within [-SPEED_LIMIT, SPEED_LIMIT]
         vector = [
@@ -253,9 +294,12 @@ const draw = () => {
 window.addEventListener('resize', setBounds);
 document.addEventListener('keyup', editText);
 document.addEventListener('mousemove', setTarget);
+if (window.DeviceMotionEvent) {
+    window.addEventListener('devicemotion', handleMotion);
+}
 
 
-// WORD CHECK
+// URL WORD CHECK
 const { message } = queryString.parse(location.search);
 const parsedMessage = (message || '').replace(/[^\w\s]/, '');
 
