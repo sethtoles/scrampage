@@ -9,6 +9,7 @@ const MOUSE_FOLLOW_TIME = 500; // How long the text will follow the mouse after 
 const MOTION_FOLLOW_TIME = 3000; // How long the text will follow the device orientation
 const TAIL_LIMITS = [ 1, 1000 ]; // The normal bounds of a tail length
 const INTRO_LENGTH = 200; // How many iterations before the word starts moving
+const KEYBOARD_DELAY = 3000; // How long a user must press to get a keyboard
 
 
 // UTIL
@@ -18,6 +19,7 @@ const randPercent = () => Math.floor(Math.random() * 100); // Random int 0 to 10
 const randAdjust = () => Math.round(Math.random() * 2) - 1; // Random int -1, 0, or 1
 const scramble = string => [ ...string ].sort(() => Math.random() < 0.5 ? 1 : -1).join(''); // Rearrange letters in word
 const randTail = () => Math.round(Math.random() * (TAIL_LIMITS[1] - TAIL_LIMITS[0])) + TAIL_LIMITS[0]; // Random tail length
+const stripText = (text = '') => text.replace(/[^\w\s]/, ''); // Remove invalid characters from text
 
 
 // STATE SETUP
@@ -41,6 +43,7 @@ const changeHistory = [];
 
 // ELEMENT SETUP
 const canvas = document.getElementById('canvas');
+const input = document.getElementById('input');
 const consoleEl = document.getElementById('console'); // place to emit dubug statements
 const context = canvas.getContext('2d');
 
@@ -73,10 +76,15 @@ const centerWord = () => {
 };
 
 
-// TEXT EDITING
+// TEXT EDITING - Desktop
 let editing = false;
 let editingTimeout;
 const editText = e => {
+    // handleInput change will be used instead
+    if (shouldShowKeyboard) {
+        return;
+    }
+
     e.preventDefault();
     const { key } = e;
 
@@ -99,6 +107,29 @@ const editText = e => {
         editing = false;
     }, EDITING_TIME);
 };
+// TEXT EDITING - Mobile
+let keyboardTimeout;
+let shouldShowKeyboard;
+const waitForKeyboard = () => {
+    clearTimeout(keyboardTimeout);
+    setTimeout(() => {
+        shouldShowKeyboard = true;
+    }, KEYBOARD_DELAY);
+}
+const cancelKeyboard = () => {
+    if (shouldShowKeyboard) {
+        input.focus();
+    }
+    clearTimeout(keyboardTimeout);
+    shouldShowKeyboard = false;
+}
+const handleInputChange = () => {
+    const strippedWord = stripText(input.value).trim();
+    setWord(strippedWord);
+}
+const handleInputBlur = () => {
+    input.value = '';
+}
 
 
 // MOUSE TARGETING
@@ -292,20 +323,23 @@ const draw = () => {
 
 // EVENT LISTENERS
 window.addEventListener('resize', setBounds);
+window.addEventListener('devicemotion', handleMotion);
+
 document.addEventListener('keyup', editText);
+document.addEventListener('touchstart', waitForKeyboard);
+document.addEventListener('touchend', cancelKeyboard);
 document.addEventListener('mousemove', setTarget);
-if (window.DeviceMotionEvent) {
-    window.addEventListener('devicemotion', handleMotion);
-}
+
+input.addEventListener('input', handleInputChange);
+input.addEventListener('blur', handleInputBlur)
 
 
 // URL WORD CHECK
 const { message } = queryString.parse(location.search);
-const parsedMessage = (message || '').replace(/[^\w\s]/, '');
 
 
 // START
 setBounds();
-setWord(parsedMessage || 'SCRAMPAGE');
+setWord(stripText(message) || 'SCRAMPAGE');
 centerWord();
 draw();
