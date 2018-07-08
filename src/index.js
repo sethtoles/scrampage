@@ -31,7 +31,9 @@ let shouldUseScrambled = false;
 let position = [0, 0];
 let vector = [0, 0];
 let color = [ randHue(), 50, 50 ];
-let colorVector = [ 0, 0, 0 ];
+let colorVector = [ 0.1, 0 ];
+let randomColorMode = false;
+let randomColorIndex = 0;
 let textWidth;
 let textHeight;
 let iterations = 0;
@@ -215,6 +217,13 @@ const draw = () => {
             }
         }
 
+        // Change color mode
+        if (Math.random() < 0.001) {
+            randomColorMode = true;
+            randomColorIndex = 0;
+        }
+
+
         // Get current position and direction
         const [ x, y ] = position;
         let [ dx, dy ] = vector;
@@ -262,7 +271,7 @@ const draw = () => {
 
     // Get current color values
     const [ hue, saturation, lightness ] = color;
-    const [ dHue, dSaturation, dLightness ] = colorVector;
+    const [ dHue, dLightness ] = colorVector;
 
     // Update color
     color = [
@@ -272,14 +281,27 @@ const draw = () => {
     ];
 
     // Update color vector
-    colorVector = [
-        0.1,
-        0,
-        Math.max(-5, Math.min(dLightness + randAdjust(), 5)),
-    ];
-
+    colorVector[1] = Math.max(-5, Math.min(dLightness + randAdjust(), 5));
     if (color[2] <= 25 || color[2] >= 65) {
-        colorVector[2] *= -1;
+        colorVector[1] *= -1;
+    }
+
+    if (randomColorMode) {
+        for (let i = 0; i < 3; i++) {
+            if (randomColorIndex < historyLength - 1) {
+                const state = changeHistory[randomColorIndex];
+                const oldLightness = state.color[2];
+                state.color = [
+                    randHue(),
+                    100,
+                    oldLightness,
+                ];
+                randomColorIndex++;
+            }
+            else {
+                randomColorMode = false;
+            }
+        }
     }
 
     // Push render state to history
