@@ -9,7 +9,7 @@ const MOUSE_FOLLOW_TIME = 500; // How long the text will follow the mouse after 
 const MOTION_FOLLOW_TIME = 3000; // How long the text will follow the device orientation
 const TAIL_LIMITS = [ 1, 1000 ]; // The normal bounds of a tail length
 const INTRO_LENGTH = 200; // How many iterations before the word starts moving
-const KEYBOARD_DELAY = 3000; // How long a user must press to get a keyboard
+const KEYBOARD_DELAY = 2000; // How long a user must press to get a keyboard
 
 
 // UTIL
@@ -112,7 +112,7 @@ let keyboardTimeout;
 let shouldShowKeyboard;
 const waitForKeyboard = () => {
     clearTimeout(keyboardTimeout);
-    setTimeout(() => {
+    keyboardTimeout = setTimeout(() => {
         shouldShowKeyboard = true;
     }, KEYBOARD_DELAY);
 }
@@ -232,8 +232,8 @@ const draw = () => {
         }
 
         // Set new position within bounds
-        const newX = x + dx;
-        const newY = y + dy;
+        const newX = Math.round(x + dx);
+        const newY = Math.round(y + dy);
         const maxXPosition = width - textWidth;
         const maxYPosition = height - textHeight;
         position = [
