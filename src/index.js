@@ -7,9 +7,27 @@ const KEY_EXP = /^[\w\s]$/; // Valid characters to be used in the word
 const EDITING_TIME = 2000; // How long after each character typed before leaving editing mode
 const MOUSE_FOLLOW_TIME = 500; // How long the text will follow the mouse after it stops moving
 const MOTION_FOLLOW_TIME = 3000; // How long the text will follow the device orientation
-const TAIL_LIMITS = [ 1, 1000 ]; // The normal bounds of a tail length
+const TAIL_LIMITS = [ 2, 1000 ]; // The normal bounds of a tail length
 const INTRO_LENGTH = 200; // How many iterations before the word starts moving
 const KEYBOARD_DELAY = 2000; // How long a user must press to get a keyboard
+// Random Event Timing - time to wait for event to start and duration of event in seconds
+const EVENT_TIMING = {
+    scramble: {
+        wait: [5, 40],
+        duration: [0, 8],
+    },
+    tail: {
+        wait: [2.5, 20],
+    },
+    wander: {
+        wait: [20, 40],
+        duration: [2.5, 10],
+    },
+    colorMode: {
+        wait: [30, 90],
+        duration: [5, 10],
+    },
+};
 
 
 // UTIL
@@ -20,6 +38,7 @@ const randAdjust = () => Math.round(Math.random() * 2) - 1; // Random int -1, 0,
 const scramble = string => [ ...string ].sort(() => Math.random() < 0.5 ? 1 : -1).join(''); // Rearrange letters in word
 const randTail = () => Math.round(Math.random() * (TAIL_LIMITS[1] - TAIL_LIMITS[0])) + TAIL_LIMITS[0]; // Random tail length
 const stripText = (text = '') => text.replace(/[^\w\s]/, ''); // Remove invalid characters from text
+const randSecondsBetween = ([ lower, upper ]) => Math.round((Math.random() * (upper - lower) + lower) * 1000);
 
 
 // STATE SETUP
@@ -34,6 +53,7 @@ let color = [ randHue(), 50, 50 ];
 let colorVector = [ 0.1, 0 ];
 let randomColorMode = false;
 let randomColorIndex = 0;
+let randomColorCaughtUp = false;
 let textWidth;
 let textHeight;
 let iterations = 0;
@@ -75,6 +95,79 @@ const centerWord = () => {
         (width / 2) - (textWidth / 2),
         (height / 2) - (textHeight / 2),
     ];
+};
+
+// Scramble/restore word
+const setScrambleWait = () => {
+    const { wait } = EVENT_TIMING.scramble;
+    setTimeout(() => {
+        scrambledWord = scramble(word);
+        shouldUseScrambled = true;
+
+        setScrambleDuration();
+    }, randSecondsBetween(wait));
+};
+const setScrambleDuration = () => {
+    const { duration } = EVENT_TIMING.scramble;
+    setTimeout(() => {
+        shouldUseScrambled = false;
+
+        setScrambleWait();
+    }, duration ? randSecondsBetween(duration) : 0);
+};
+
+// Adjust tail length
+const setTailWait = () => {
+    const { wait } = EVENT_TIMING.tail;
+    setTimeout(() => {
+        targetHistoryLength = randTail();
+
+        setTailDuration();
+    }, randSecondsBetween(wait));
+};
+const setTailDuration = () => {
+    const { duration } = EVENT_TIMING.tail;
+    setTimeout(() => {
+        targetHistoryLength = randTail();
+
+        setTailWait();
+    }, duration ? randSecondsBetween(duration) : 0);
+};
+
+// Toggle wandering
+const setWanderWait = () => {
+    const { wait } = EVENT_TIMING.wander;
+    setTimeout(() => {
+        shouldWander = false;
+
+        setWanderDuration();
+    }, randSecondsBetween(wait));
+};
+const setWanderDuration = () => {
+    const { duration } = EVENT_TIMING.wander;
+    setTimeout(() => {
+        shouldWander = true;
+
+        setWanderWait();
+    }, duration ? randSecondsBetween(duration) : 0);
+};
+
+// Change color mode
+const setColorWait = () => {
+    const { wait } = EVENT_TIMING.colorMode;
+    setTimeout(() => {
+        randomColorMode = true;
+        randomColorIndex = 0;
+        randomColorCaughtUp = false;
+    }, randSecondsBetween(wait));
+};
+const setColorDuration = () => {
+    const { duration } = EVENT_TIMING.colorMode;
+    setTimeout(() => {
+        randomColorMode = false;
+
+        setColorWait();
+    }, duration ? randSecondsBetween(duration) : 0);
 };
 
 
@@ -195,35 +288,14 @@ const draw = () => {
     context.fillStyle = '#000';
     context.fillRect(0, 0, width, height);
 
+    if (iterations === INTRO_LENGTH) {
+        setScrambleWait();
+        setTailWait();
+        setWanderWait();
+        setColorWait();
+    }
+
     if (iterations > INTRO_LENGTH) {
-        // Scramble/restore word
-        if (Math.random() < 0.003) {
-            shouldUseScrambled = !shouldUseScrambled;
-            if (!shouldUseScrambled) {
-                scrambledWord = scramble(word);
-            }
-        }
-
-        // Adjust tail length
-        if (Math.random() < 0.003) {
-            targetHistoryLength = randTail();
-        }
-
-        // Toggle wandering - more likely to wander than to stop
-        if (Math.random() < 0.005) {
-            shouldWander = true;
-            if (Math.random() < 0.25) {
-                shouldWander = false;
-            }
-        }
-
-        // Change color mode
-        if (Math.random() < 0.001) {
-            randomColorMode = true;
-            randomColorIndex = 0;
-        }
-
-
         // Get current position and direction
         const [ x, y ] = position;
         let [ dx, dy ] = vector;
@@ -287,20 +359,32 @@ const draw = () => {
     }
 
     if (randomColorMode) {
-        for (let i = 0; i < 3; i++) {
-            if (randomColorIndex < historyLength - 1) {
-                const state = changeHistory[randomColorIndex];
-                const oldLightness = state.color[2];
-                state.color = [
-                    randHue(),
-                    100,
-                    oldLightness,
-                ];
-                randomColorIndex++;
+        if (!randomColorCaughtUp) {
+            // Go through tail, randomly setting hue
+            for (let i = 0; i < 3; i++) {
+                if (randomColorIndex < historyLength - 1) {
+                    const state = changeHistory[randomColorIndex];
+                    const oldLightness = state.color[2];
+                    state.color = [
+                        randHue(),
+                        100,
+                        oldLightness,
+                    ];
+                    randomColorIndex++;
+                }
+                else {
+                    // Caught up with tail, start counting towards mode end
+                    randomColorCaughtUp = true;
+                    setColorDuration();
+                }
             }
-            else {
-                randomColorMode = false;
-            }
+        }
+        else {
+            color = [
+                randHue(),
+                100,
+                Math.round(Math.random() * 40) + 25,
+            ];
         }
     }
 
