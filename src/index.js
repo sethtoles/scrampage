@@ -25,7 +25,7 @@ const EVENT_TIMING = {
     },
     colorMode: {
         wait: [30, 90],
-        duration: [5, 10],
+        duration: [2, 10],
     },
 };
 
@@ -157,13 +157,13 @@ const setColorWait = () => {
     const { wait } = EVENT_TIMING.colorMode;
     setTimeout(() => {
         randomColorMode = true;
-        randomColorIndex = 0;
-        randomColorCaughtUp = false;
     }, randSecondsBetween(wait));
 };
 const setColorDuration = () => {
     const { duration } = EVENT_TIMING.colorMode;
     setTimeout(() => {
+        randomColorIndex = 0;
+        randomColorCaughtUp = false;
         randomColorMode = false;
 
         setColorWait();
