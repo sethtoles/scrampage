@@ -54,6 +54,8 @@ let colorVector = [ 0.1, 0 ];
 let randomColorMode = false;
 let randomColorIndex = 0;
 let randomColorCaughtUp = false;
+let fadeLength = 0;
+let fadeLengthMax = 0;
 let textWidth;
 let textHeight;
 let iterations = 0;
@@ -161,12 +163,11 @@ const setColorWait = () => {
 };
 const setColorDuration = () => {
     const { duration } = EVENT_TIMING.colorMode;
+    // Set a timeout for when to start transitioning back to the default color mode
     setTimeout(() => {
         randomColorIndex = 0;
-        randomColorCaughtUp = false;
-        randomColorMode = false;
-
-        setColorWait();
+        fadeLength = 200; // TODO: set randomly
+        fadeLengthMax = fadeLength;
     }, duration ? randSecondsBetween(duration) : 0);
 };
 
@@ -379,7 +380,37 @@ const draw = () => {
                 }
             }
         }
-        else {
+        // If the color is fading back into the default mode
+        else if (fadeLength) {
+            if (fadeLength ===  1) {
+                // The fade is ended
+                randomColorMode = false;
+                randomColorCaughtUp = false;
+                fadeLength = 0;
+                fadeLengthMax = 0;
+
+                // Start waiting for the next random color event
+                setColorWait();
+            } else {
+                // Set random hue and lightness
+                const randomHue = randHue();
+                const randomLightness =  Math.round(Math.random() * 40) + 25;
+                // Determine how far into the fade we are
+                const fadeFactor = 1 - (fadeLength / fadeLengthMax);
+                // Subtract the difference
+                const hueDifference = (randomHue - color[0]) * fadeFactor;
+                const lightnessDifference = (randomLightness - color[2]) * fadeFactor;
+
+                color = [
+                    randomHue - hueDifference,
+                    100,
+                    randomLightness - lightnessDifference,
+                ];
+
+                fadeLength--;
+            }
+        } else {
+            // Set random color properties
             color = [
                 randHue(),
                 100,
